@@ -1,0 +1,76 @@
+import numpy as np
+
+# Define the sigmoid activation function
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+# Define the derivative of sigmoid activation function
+def sigmoid_derivative(x):
+    return x * (1 - x)
+
+# Define the FullAdderNN class
+class FullAdderNN:
+    def __init__(self):
+        # Initialize the weights for the hidden layers and output layer
+        np.random.seed(4)  # Set seed for random number generator
+        self.weights_hidden1 = 2 * np.random.random((8, 8)) - 1
+        self.weights_hidden2 = 2 * np.random.random((8, 16)) - 1
+        self.weights_output = 2 * np.random.random((16, 2)) - 1
+
+    # Define the training function
+    def train(self, X_train, Y_train, i=10000, learning_rate=0.1):
+        for epoch in range(i):
+            # Forward propagation
+            hidden1 = sigmoid(np.dot(X_train, self.weights_hidden1))
+            hidden2 = sigmoid(np.dot(hidden1, self.weights_hidden2))
+            output = sigmoid(np.dot(hidden2, self.weights_output))
+
+            # Backpropagation
+            output_error = (Y_train - output) * sigmoid_derivative(output)
+            output_delta = output_error
+
+            hidden2_error = output_delta.dot(self.weights_output.T)
+            hidden2_delta = hidden2_error * sigmoid_derivative(hidden2)
+
+            hidden1_error = hidden2_delta.dot(self.weights_hidden2.T)
+            hidden1_delta = hidden1_error * sigmoid_derivative(hidden1)
+
+            # Update weights
+            self.weights_output += learning_rate * hidden2.T.dot(output_delta)
+            self.weights_hidden2 += learning_rate * hidden1.T.dot(hidden2_delta)
+            self.weights_hidden1 += learning_rate * X_train.T.dot(hidden1_delta)
+
+    # Define the prediction function
+    def predict(self, X_unknown):
+        hidden1 = sigmoid(np.dot(X_unknown, self.weights_hidden1))
+        hidden2 = sigmoid(np.dot(hidden1, self.weights_hidden2))
+        output = sigmoid(np.dot(hidden2, self.weights_output))
+        return output
+
+# Define the training inputs and outputs
+X_train = np.array([[1,0,0,0,0,0,0,0], [0,1,0,0,0,0,0,0], [0,0,1,0,0,0,0,0], [0,0,0,1,0,0,0,0], [0,0,0,0,0,1,0,0], [0,0,0,0,0,0,0,1]])
+Y_train = np.array([[0., 0.],             [1., 0.],               [1., 0.],         [0., 1.],       [0. ,1.],     [1., 1.]])
+
+nn = FullAdderNN()
+
+# Train neural network using known inputs and outputs
+nn.train(X_train, Y_train)
+
+X_unknown = np.array([[0,0,0,0,1,0,0,0],
+                      [0,0,0,0,0,0,1,0]])
+
+# Predict outputs for unknown inputs
+y_pred = nn.predict(X_unknown)
+print(f'Predicted Outputs: {y_pred}')
+
+
+# Approx predict outputs for unknown inputs
+y_pred1= nn.predict(X_unknown[0])
+y_pred2= nn.predict(X_unknown[1])
+
+print("Predicted Result:")
+    
+print("[0 1]") if  y_pred1[1] >=0.5  else print("[1 0]") 
+
+print("[0 1]") if  y_pred2[1] >= 0.5 else print("[1 0]") 
+
