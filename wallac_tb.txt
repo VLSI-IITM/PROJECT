@@ -1,0 +1,32 @@
+module testbench;
+
+reg [3:0] a, b;
+wire [7:0] m;
+
+// Instantiate the module to be tested
+wallace_mult dut(.a(a), .b(b), .m(m));
+
+initial begin
+  // Initialize inputs
+  a = 4'b0101;
+  b = 4'b0010;
+
+  // Wait for a few nanoseconds to allow the circuit to settle
+  #5;
+
+  // Print the input values
+  $display("a = %b, b = %b", a, b);
+
+  // Wait for a few more nanoseconds
+  #5;
+
+  // Print the output value
+  $display("m = %b", m);
+  
+  if(m==a*b)
+   $display("passed");
+   else
+   $display("failed");
+end
+
+endmodule

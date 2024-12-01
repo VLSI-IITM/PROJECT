@@ -1,0 +1,45 @@
+module wallace_mult( m, a, b );
+input [3:0]a,b;
+output [7:0]m;
+
+wire [3:0] p0, p1, p2, p3;
+wire s5, s4,s3,s2,s1,s0;
+wire c5, c4,c3,c2,c1,c0;
+assign p0 = {a[0], a[0], a[0], a[0]} & b;
+assign p1 = {a[1], a[1], a[1], a[1]} & b;
+assign p2 = {a[2], a[2], a[2], a[2]} & b;
+assign p3 = {a[3], a[3], a[3], a[3]} & b;
+
+wire l1,k1,l2,k2;
+
+/////half adder instantation
+ FA a1(p2[1],p3[0],1'b0,l1,k1);
+ FA a2(p2[2],p3[1],1'b0,l2,k2);
+FA a3(p0[1],p1[0],1'b0,c0,s0);
+
+////full adder
+
+ FA a4(p0[2],p1[1],p2[0],c1,s1);
+ FA a5(p0[3],p1[2],k1,c2,s2);
+ FA a6(p1[3],k2,l1,c3,s3);
+ FA a7(p2[3],p3[2],l2,c4,s4);
+ 
+ 
+ assign m[0]=p0[0],
+       m[1]=s0;
+       
+ assign m[7:2]={{p3[3]+c4},{s4+c3},{s3+c2},{s2+c1},{s1+c0}};
+
+
+
+endmodule
+
+module FA(input a,b,cin,
+output cout,sum);
+
+assign cout=a&b | b&cin | a&cin,
+       sum=a^b^cin;
+
+
+
+endmodule
