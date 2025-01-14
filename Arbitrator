@@ -1,0 +1,272 @@
+`timescale 1ns/1ps
+
+module axis_Arbitrator_debug_v1_0 #
+    ( 
+      parameter NUM_INTERFACES = 4,
+      parameter PORT_WIDTH =8
+    )
+     (
+
+     input wire    axis_aclk,
+     input wire    axis_aresetn,
+   
+
+     input                         s00_axis_treday,
+     input [PORT_WIDTH-1 : 0]      s00_axis_tdata,
+     input                         s00_axis_tlast,
+     input                         s00_axis_tvalid,
+    
+     input                         s01_axis_treday,
+     input [PORT_WIDTH-1 : 0]      s01_axis_tdata,
+     input                         s01_axis_tlast,
+     input                         s01_axis_tvalid,
+
+     input                         s02_axis_treday,
+     input [PORT_WIDTH-1 : 0]      s02_axis_tdata,
+     input                         s02_axis_tlast,
+     input                         s02_axis_tvalid,
+
+     input                         s03_axis_treday,
+     input [PORT_WIDTH-1 : 0]      s03_axis_tdata,
+     input                         s03_axis_tlast,
+     input                         s03_axis_tvalid,
+
+
+     input                         m_axis_treday,
+     input [PORT_WIDTH-1 : 0]      m_axis_tdata,
+     input                         m_axis_tlast,
+     input                         m_axis_tvalid
+
+);
+
+
+
+      logic [3:0]                                   s_axis_tready;
+      logic [3:0] [PORT_WIDTH-1 : 0]                s_axis_tdata;
+      logic [3:0]                                   s_axis_tlast;
+      logic [3:0]                                   s_axis_tvalid;
+
+
+
+
+      logic [3:0]                                   m_axis_tready_all;
+      logic [3:0] [PORT_WIDTH-1 : 0]                m_axis_tdata_all;
+      logic [3:0]                                   m_axis_tlast_all;
+      logic [3:0]                                   m_axis_tvalid_all;
+
+
+
+assign s_axis_tready = {s03_axis_treday,s02_axis_treday,s01_axis_treday,s02_axis_treday};
+
+assign s_axis_tvalid = {s03_axis_tvalid,s02_axis_tvalid,s01_axis_tvalid,s02_axis_tvalid};
+
+assign s_axis_tlast = {s03_axis_tlast,s02_axis_tlasst,s01_axis_tlast,s02_axis_tlast};
+
+assign s_axis_tdata[0] = s00_axis_tdata;
+assign s_axis_tdata[1] = s01_axis_tdata;
+assign s_axis_tdata[2] = s02_axis_tdata;
+assign s_axis_tdata[3] = s03_axis_tdata;
+
+
+
+
+
+
+
+
+
+
+
+
+    genvar                                  i;
+    generate
+        for(i=0; i<4;i=i+1)  begin
+              
+              if(i < NUM_INTERFACES) begin
+                   axis_snoop_fifo
+                     #(
+                         .PORT_WIDTH(PORT_WIDTH)
+                       )
+               axis_snoop_fifo_i
+                   (
+                      .AXIS_ACLK(axis_aclk),
+                      .AXIS_ARESETN(axis_aresetn),
+                      
+                      .s_AXIS_TREADY(s_axis_treday[i]),
+                      .s_AXIS_TDATA(s_axis_tdata[i]),
+                      .s_AXIS_TLAST(s_axis_tlast[i]),
+                      .s_AXIS_TVALID(s_axis_tvalid[i]),
+
+                      .M_AXIS_TREADY(m_axis_tready_all[i]),
+                      .M_AXIS_TDATA(m_axis_tdata_all[i]),
+                      .M_AXIS_TLAST(m_axis_tlast_all[i]),
+                      .M_AXIS_TVALID(m_axis_tvalid_all[i]),
+              
+                    );
+          
+                    end // if(i<NUM_INTERFACES)
+                    else begin
+                    assign m_axis_tdata_all[i] =0;
+                    assign m_axis_tvalid_all[i] =0;
+                    assign m_axis_tlast_all[i] =0;
+
+                    end
+                   end    // for(i=0; i< NUMBER ; i=i+1 )
+                 endgenerate
+
+                logic                         busy;
+
+   
+               logic[1:0]                    channel_choice;
+               logic[1:0]                    next_channel_choice;
+
+               logic                         next_channel_valid;
+  
+              always_ff@(posedge axis_aclk) begin
+                  if(~axis_aresetn) begin
+                      next_channel_choice <=0;
+                      next_channel_valid  <=0;
+
+                   end
+                   else begin
+                     next_channel_valid <=0;
+                    
+                     if(m_axis_tvalid_all[0]) begin
+                        next_channnel_choice <= 0;
+                        next_channel_valid   <= 1;
+                       
+                      end
+ 
+                     else if(m_axis_tvalid_all[1]) begin
+                        next_channnel_choice <= 1;
+                        next_channel_valid   <= 1;
+                       
+                      end
+ 
+                     
+                     else if(m_axis_tvalid_all[2]) begin
+                        next_channnel_choice <= 2;
+                        next_channel_valid   <= 1;
+                       
+                      end
+ 
+                    else if(m_axis_tvalid_all[3]) begin
+                        next_channnel_choice <= 34;
+                        next_channel_valid   <= 1;
+                       
+                      end
+
+               end
+              end
+            end
+
+
+                typedef Enum  {IDLE,WRITING,LAST} state_Type;
+
+                state_type  current_state =IDLE;
+                state_type  next_state    =IDLE;
+
+            always@(*)  begin
+                case(current_state)
+                  IDLE : 
+                      begin
+                             if(next_channel_valid) 
+                                  begin
+                                     next_state = current_state;
+
+                       end
+                   else  begin
+                        next_state = current_state;
+
+                   end 
+                        end
+
+                   WRITING : 
+                       begin
+                        
+                             if(m_axis_tvalid & m_axis_tready & m_axis_tlast) begin
+                                 next_state = LAST;
+                             end
+                           else begin
+                                next_state = current_state;
+
+                        end
+                   end
+
+                       LAST : 
+                         begin
+                             next_state = IDLE;
+                           end
+                  default : next_state = current_state;
+                      endcase
+                 end
+
+
+                      alwasy@(posedge axis_aclk) begin
+                          if(~axis_aresetn) current_state <= IDLE;
+                          else              current_state <= next_state;
+
+                    end
+
+               alwasy@(posedge axis_aclk) begin
+                      if(~axis_aresetn) channel_choice <=0;
+                      else begin
+                             
+                             if(next_state==WRITING && current_state==IDLE) begin
+                                channel_choice <= next_channel_choice;
+
+                             end
+                           end
+                         end
+ 
+                 assign m_axis_tdata = m_axis_tdata_all[channel_choice];
+                 assign m_axis_tdata = m_axis_tvalid_all[channel_choice];
+                 assign m_axis_tlast = m_axis_tlast_all[channel_choice];
+
+                always_comb begin
+                  m_axis_tready_all = 0;
+ 
+                  if(current_state == WRITING) begin
+                     m_axis_tready_all[channel_choice] = m_axis_treday;
+
+                  end
+                 else begin
+                  m_axis_treday_all[channel_choice] = 0;
+
+               end
+              end
+endmodule
+
+
+
+ 
+                             
+                    
+
+
+ 
+ 
+              
+
+
+             
+
+
+
+
+                      
+                      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
